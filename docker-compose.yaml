@@ -1,0 +1,48 @@
+version: "3.9"
+
+x-rtsp-service: &rtsp-service
+  image: rtsp-to-youtube
+  restart: unless-stopped
+  env_file:
+    - .env
+  environment: &rtsp-default-env
+    ENABLE_AUDIO: ${ENABLE_AUDIO:-1}
+    RTMP_BASE_URL: ${RTMP_BASE_URL:-rtmp://a.rtmp.youtube.com/live2}
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  cam1:
+    <<: *rtsp-service
+    container_name: cam1-forwarder
+    environment:
+      <<: *rtsp-default-env
+      RTSP_URL: ${CAM1_RTSP_URL}
+      YOUTUBE_STREAM_KEY: ${CAM1_YOUTUBE_KEY}
+
+  cam2:
+    <<: *rtsp-service
+    container_name: cam2-forwarder
+    environment:
+      <<: *rtsp-default-env
+      RTSP_URL: ${CAM2_RTSP_URL}
+      YOUTUBE_STREAM_KEY: ${CAM2_YOUTUBE_KEY}
+
+  cam3:
+    <<: *rtsp-service
+    container_name: cam3-forwarder
+    environment:
+      <<: *rtsp-default-env
+      RTSP_URL: ${CAM3_RTSP_URL}
+      YOUTUBE_STREAM_KEY: ${CAM3_YOUTUBE_KEY}
+
+  camX:
+    <<: *rtsp-service
+    container_name: camX-forwarder
+    environment:
+      <<: *rtsp-default-env
+      RTSP_URL: ${CAMX_RTSP_URL}
+      YOUTUBE_STREAM_KEY: ${CAMX_YOUTUBE_KEY}
