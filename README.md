@@ -19,7 +19,7 @@ Forward multiple RTSP camera feeds to YouTube Live using a tiny ffmpeg-based con
 ## Building
 
 ```bash
-docker build -t rtsp-to-youtube .
+docker build -t rstp-stream-forward .
 ```
 
 ## Running a Single Stream
@@ -29,7 +29,7 @@ docker run \
   --name cam1-forwarder \
   -e RTSP_URL=rtsp://user:pass@camera-host:8554/stream \
   -e YOUTUBE_STREAM_KEY=xxxx-xxxx-xxxx-xxxx \
-  rtsp-to-youtube
+  rstp-stream-forward
 ```
 
 ### Environment Variables
@@ -55,6 +55,8 @@ docker run \
 | `AUDIO_SAMPLE_RATE`  | no       | `44100`                           | Audio sample rate                                                |
 | `AUDIO_LAYOUT`       | no       | `stereo`                          | Audio channel layout                                             |
 | `FFMPEG_LOGLEVEL`    | no       | `info`                            | ffmpeg log level                                                 |
+| `THREAD_QUEUE_SIZE`  | no       | `512`                             | Input buffer queue for RTSP reader                               |
+| `VIDEO_FILTER`       | no       | —                                 | Optional `-vf` expression (e.g., `scale=in_range=pc:out_range=tv`) |
 | `EXTRA_FFMPEG_ARGS`  | no       | —                                 | Additional raw arguments appended before `-f flv`                |
 
 ## Docker Compose (Multiple Cameras)
@@ -65,7 +67,7 @@ docker run \
      RTSP_URL: ${CAM1_RTSP_URL}
      YOUTUBE_STREAM_KEY: ${CAM1_YOUTUBE_KEY}
    ```
-2. Create a `.env` file alongside the compose file with the sensitive values.
+2. Create a `.env` file alongside the compose file with the sensitive values. Compose will use it for variable substitution, but the raw keys will not be injected into containers unless you reference them explicitly.
 3. Start everything:
    ```bash
    docker compose up -d
@@ -74,8 +76,10 @@ docker run \
 ## Customizing ffmpeg
 
 - **Bitrate / resolution**: change `VIDEO_BITRATE`, add `EXTRA_FFMPEG_ARGS="-vf scale=1280:-2"` to downscale.
+- **Color range warnings**: set `VIDEO_FILTER="scale=in_range=pc:out_range=tv"` when sources output `yuvj420p` to avoid deprecated pixel format logs.
 - **Hardware encoding**: set `EXTRA_FFMPEG_ARGS="-c:v h264_nvenc"` (or `h264_vaapi`, etc.) and pass the device into the container. Adjust pixel format and presets per encoder.
 - **Remux only**: if the camera already streams compatible H.264, set `EXTRA_FFMPEG_ARGS="-c:v copy"` to avoid re-encoding and dramatically cut CPU usage.
+- **RTSP buffer underruns**: raise `THREAD_QUEUE_SIZE` (e.g., 1024 or 2048) if you see `Thread message queue blocking` warnings.
 
 ## Health & Monitoring
 
@@ -85,7 +89,7 @@ docker run \
 
 ## Security Notes
 
-- Never commit real RTSP credentials or YouTube keys. Store them in `.env`, Docker secrets, or your orchestrator's secret manager.
+- Never commit real RTSP credentials or YouTube keys. Store them in `.env`, Docker secrets, or your orchestrator's secret manager. With the provided compose file, `.env` values only enter containers if referenced in `environment`, keeping unused credentials isolated.
 - Restrict RTSP endpoints to trusted networks.
 
 ## Troubleshooting

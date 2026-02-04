@@ -1,10 +1,6 @@
-version: "3.9"
-
 x-rtsp-service: &rtsp-service
-  image: rtsp-to-youtube
+  image: rstp-stream-forward
   restart: unless-stopped
-  env_file:
-    - .env
   environment: &rtsp-default-env
     ENABLE_AUDIO: ${ENABLE_AUDIO:-1}
     RTMP_BASE_URL: ${RTMP_BASE_URL:-rtmp://a.rtmp.youtube.com/live2}
@@ -39,10 +35,10 @@ services:
       RTSP_URL: ${CAM3_RTSP_URL}
       YOUTUBE_STREAM_KEY: ${CAM3_YOUTUBE_KEY}
 
-  camX:
-    <<: *rtsp-service
-    container_name: camX-forwarder
-    environment:
-      <<: *rtsp-default-env
-      RTSP_URL: ${CAMX_RTSP_URL}
-      YOUTUBE_STREAM_KEY: ${CAMX_YOUTUBE_KEY}
+  # camX:
+  #   <<: *rtsp-service
+  #   container_name: camX-forwarder
+  #   environment:
+  #     <<: *rtsp-default-env
+  #     RTSP_URL: ${CAMX_RTSP_URL}
+  #     YOUTUBE_STREAM_KEY: ${CAMX_YOUTUBE_KEY}
