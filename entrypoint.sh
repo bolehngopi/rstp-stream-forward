@@ -4,64 +4,41 @@ set -euo pipefail
 : "${RTSP_URL:?RTSP_URL is required}"
 : "${YOUTUBE_STREAM_KEY:?YOUTUBE_STREAM_KEY is required}"
 
-RTMP_BASE_URL=${RTMP_BASE_URL:-"rtmp://a.rtmp.youtube.com/live2"}
-RTMP_URL=${RTMP_URL:-"${RTMP_BASE_URL}/${YOUTUBE_STREAM_KEY}"}
+RTMP_URL="rtmp://a.rtmp.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
+PRESET=${VIDEO_PRESET:-"ultrafast"}
+THREADS=${FFMPEG_THREADS:-"1"}
+RESOLUTION=${VIDEO_RESOLUTION:-""}
 
-VIDEO_PRESET=${VIDEO_PRESET:-"veryfast"}
-VIDEO_TUNE=${VIDEO_TUNE:-"zerolatency"}
-VIDEO_PROFILE=${VIDEO_PROFILE:-"high"}
-VIDEO_LEVEL=${VIDEO_LEVEL:-"4.1"}
-PIX_FMT=${PIX_FMT:-"yuv420p"}
-FRAME_RATE=${FRAME_RATE:-"25"}
-GOP_SIZE=${GOP_SIZE:-"50"}
-VIDEO_BITRATE=${VIDEO_BITRATE:-"2500k"}
-VIDEO_MAXRATE=${VIDEO_MAXRATE:-"2500k"}
-VIDEO_BUFSIZE=${VIDEO_BUFSIZE:-"5000k"}
-AUDIO_BITRATE=${AUDIO_BITRATE:-"128k"}
-AUDIO_SAMPLE_RATE=${AUDIO_SAMPLE_RATE:-"44100"}
-AUDIO_LAYOUT=${AUDIO_LAYOUT:-"stereo"}
-FFMPEG_LOGLEVEL=${FFMPEG_LOGLEVEL:-"info"}
-THREAD_QUEUE_SIZE=${THREAD_QUEUE_SIZE:-"512"}
-VIDEO_FILTER=${VIDEO_FILTER:-""}
-
-if [ "${ENABLE_AUDIO:-1}" -eq 1 ]; then
-  AUDIO_INPUT_ARGS="-f lavfi -i anullsrc=channel_layout=${AUDIO_LAYOUT}:sample_rate=${AUDIO_SAMPLE_RATE}"
-  AUDIO_MAP_ARGS="-map 1:a:0 -c:a aac -b:a ${AUDIO_BITRATE}"
+# Scale filter if resolution is set
+if [ -n "${RESOLUTION}" ]; then
+  SCALE_ARGS="-vf scale=${RESOLUTION}"
 else
-  AUDIO_INPUT_ARGS=""
-  AUDIO_MAP_ARGS=""
-fi
-
-if [ -n "${VIDEO_FILTER}" ]; then
-  VIDEO_FILTER_ARGS="-vf ${VIDEO_FILTER}"
-else
-  VIDEO_FILTER_ARGS=""
+  SCALE_ARGS=""
 fi
 
 exec ffmpeg \
-  -loglevel "${FFMPEG_LOGLEVEL}" \
-  -nostdin \
   -rtsp_transport tcp \
   -use_wallclock_as_timestamps 1 \
   -fflags +genpts \
-  -thread_queue_size "${THREAD_QUEUE_SIZE}" \
   -i "${RTSP_URL}" \
-  ${AUDIO_INPUT_ARGS} \
+  -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
   -map 0:v:0 \
-  ${AUDIO_MAP_ARGS} \
-  ${VIDEO_FILTER_ARGS} \
+  -map 1:a:0 \
   -c:v libx264 \
-  -preset "${VIDEO_PRESET}" \
-  -tune "${VIDEO_TUNE}" \
-  -profile:v "${VIDEO_PROFILE}" \
-  -level "${VIDEO_LEVEL}" \
-  -pix_fmt "${PIX_FMT}" \
-  -r "${FRAME_RATE}" \
-  -g "${GOP_SIZE}" \
-  -b:v "${VIDEO_BITRATE}" \
-  -maxrate "${VIDEO_MAXRATE}" \
-  -bufsize "${VIDEO_BUFSIZE}" \
+  -preset "${PRESET}" \
+  -tune zerolatency \
+  -profile:v high \
+  -level 4.1 \
+  -pix_fmt yuv420p \
+  -threads "${THREADS}" \
+  ${SCALE_ARGS} \
+  -r 25 \
+  -g 50 \
+  -b:v 2500k \
+  -maxrate 2500k \
+  -bufsize 5000k \
+  -c:a aac \
+  -b:a 128k \
   -shortest \
-  ${EXTRA_FFMPEG_ARGS:-} \
   -f flv \
   "${RTMP_URL}"

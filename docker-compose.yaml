@@ -4,6 +4,12 @@ x-rtsp-service: &rtsp-service
   environment: &rtsp-default-env
     ENABLE_AUDIO: ${ENABLE_AUDIO:-1}
     RTMP_BASE_URL: ${RTMP_BASE_URL:-rtmp://a.rtmp.youtube.com/live2}
+    FFMPEG_THREADS: "1"
+    VIDEO_RESOLUTION: "-2:480"
+  deploy:
+    resources:
+      limits:
+        cpus: "1.5"
   logging:
     driver: "json-file"
     options:
